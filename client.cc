@@ -160,12 +160,4 @@ int main(int argc, char *argv[]){
     return 0;
 
   
-  // while(1){
-  //   payload = "1";
-  //   blink();
-  //   usleep(500000);
-  //   payload = "0";
-  //   blink();
-  //   usleep(500000);    
-  // }
 }

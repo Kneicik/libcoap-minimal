@@ -7,13 +7,43 @@
 #include <cstdlib>
 #include <cstdio>
 #include <unistd.h>
-
+#include <fcntl.h>
+#include <stdio.h>
+#include <unistd.h>
+#include <linux/joystick.h>
+#include <iostream>
 #include "common.hh"
 
 static int have_response = 0;
 uint8_t *data = NULL;
 size_t data_len = 0;
 const char* payload = "1";
+
+//XBOX
+
+int read_event(int fd, struct js_event *event)
+{
+    ssize_t bytes;
+
+    bytes = read(fd, event, sizeof(*event));
+
+    if (bytes == sizeof(*event))
+        return 0;
+
+    /* Error, could not read full event. */
+    return -1;
+}
+
+size_t get_button_count(int fd)
+{
+    __u8 buttons;
+    if (ioctl(fd, JSIOCGBUTTONS, &buttons) == -1)
+        return 0;
+
+    return buttons;
+}
+
+// CoAP
 
 int blink(void) {
   coap_context_t  *ctx = nullptr;
@@ -94,13 +124,48 @@ coap_add_data(pdu, 1, reinterpret_cast<const uint8_t *>(payload));
   
 }
 
-int main(){
-  while(1){
-    payload = "1";
-    blink();
-    usleep(500000);
-    payload = "0";
-    blink();
-    usleep(500000);    
-  }
+int main(int argc, char *argv[]){
+    const char *device;
+    int js;
+    struct js_event event;
+  if (argc > 1)
+        device = argv[1];
+  else
+        device = "/dev/input/js2";
+
+  js = open(device, O_RDONLY);
+
+  if (js == -1)
+        perror("Could not open joystick");
+
+  while (read_event(js, &event) == 0)
+    {
+      if(event.number == 0 && event.value == 1){
+        payload = "1";
+        blink();
+      }
+      else {if(event.number == 0 && event.value == 0){
+        payload = "0";
+        blink();
+      }
+      }
+
+   
+    }
+        
+      fflush(stdout);
+    
+
+    close(js);
+    return 0;
+
+  
+  // while(1){
+  //   payload = "1";
+  //   blink();
+  //   usleep(500000);
+  //   payload = "0";
+  //   blink();
+  //   usleep(500000);    
+  // }
 }

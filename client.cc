@@ -6,13 +6,16 @@
 #include <cstring>
 #include <cstdlib>
 #include <cstdio>
+#include <unistd.h>
 
 #include "common.hh"
 
 static int have_response = 0;
+uint8_t *data = NULL;
+size_t data_len = 0;
+const char* payload = "1";
 
-int
-main(void) {
+int blink(void) {
   coap_context_t  *ctx = nullptr;
   coap_session_t *session = nullptr;
   coap_address_t dst;
@@ -25,7 +28,7 @@ main(void) {
   coap_set_log_level(LOG_WARNING);
 
   /* resolve destination address where server should be sent */
-  if (resolve_address("coap.me", "5683", &dst) < 0) {
+  if (resolve_address("192.168.2.169", "5683", &dst) < 0) {
     coap_log(LOG_CRIT, "failed to resolve address\n");
     goto finish;
   }
@@ -55,31 +58,49 @@ main(void) {
                                       });
   /* construct CoAP message */
   pdu = coap_pdu_init(COAP_MESSAGE_CON,
-                      COAP_REQUEST_CODE_GET,
+                      COAP_REQUEST_CODE_PUT,
                       coap_new_message_id(session),
                       coap_session_max_pdu_size(session));
+
+  coap_add_token(pdu, 1, reinterpret_cast<const uint8_t *>("1"));
+
+
+
   if (!pdu) {
     coap_log( LOG_EMERG, "cannot create PDU\n" );
     goto finish;
   }
 
   /* add a Uri-Path option */
-  coap_add_option(pdu, COAP_OPTION_URI_PATH, 5,
-                  reinterpret_cast<const uint8_t *>("hello"));
+  coap_add_option(pdu, COAP_OPTION_URI_PATH, 3,
+                  reinterpret_cast<const uint8_t *>("led"));
+  
+
+coap_add_data(pdu, 1, reinterpret_cast<const uint8_t *>(payload));
 
   coap_show_pdu(LOG_WARNING, pdu);
   /* and send the PDU */
-  coap_send(session, pdu);
+    coap_send(session, pdu);
+    return result;
+    while (have_response == 0)
+      coap_io_process(ctx, COAP_IO_WAIT);
 
-  while (have_response == 0)
-    coap_io_process(ctx, COAP_IO_WAIT);
+    result = EXIT_SUCCESS;
+  finish:
 
-  result = EXIT_SUCCESS;
- finish:
+    coap_session_release(session);
+    coap_free_context(ctx);
+    coap_cleanup();
+  
+}
 
-  coap_session_release(session);
-  coap_free_context(ctx);
-  coap_cleanup();
-
-  return result;
+int main(){
+  while(1){
+    payload = "1";
+    blink();
+    usleep(500000);
+    payload = "0";
+    blink();
+    usleep(500000);    
+  }
 }

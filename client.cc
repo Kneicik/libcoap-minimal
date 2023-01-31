@@ -93,6 +93,7 @@ int blink(void) {
                       coap_session_max_pdu_size(session));
 
   coap_add_token(pdu, 1, reinterpret_cast<const uint8_t *>("1"));
+  
 
 
 
